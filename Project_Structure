@@ -8,8 +8,18 @@ quick-draw-game/
 │   ├── index.html               # Main HTML page (game UI)
 │   └── script.js                # Main JavaScript file (game logic)
 │
+├── backend/
+│   └── app/
+│       ├── __init__.py            # Initializes the FastAPI app
+│       ├── routes/                # API route handlers
+│       │   ├── __init__.py
+│       │   └── drawing.py         # API route for drawing recognition
+│       ├── models/                # ML model logic
+│       │   ├── __init__.py
+│       │   └── drawing_model.py   # Logic for loading and predicting with the ML model
+│       └── main.py 
+│
 ├── .gitignore                   # Git ignore file
-├── package.json                 # Frontend dependencies (for example, npm or yarn)
+├── Project_Structure            
 ├── requirements.txt             # Backend dependencies (for example, Flask/FastAPI)
-├── Dockerfile                   # Docker configuration for the whole app (optional)
 └── README.md  
