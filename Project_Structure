@@ -1,0 +1,15 @@
+quick-draw-game/
+│
+├── frontend/                    # Frontend code (HTML, CSS, JavaScript)
+│   ├── assets/                  # Static assets (images, sounds, etc.)
+│   │   └── logo.png      
+│   ├── css/                     # CSS styles
+│   │   └── main.css           
+│   ├── index.html               # Main HTML page (game UI)
+│   └── script.js                # Main JavaScript file (game logic)
+│
+├── .gitignore                   # Git ignore file
+├── package.json                 # Frontend dependencies (for example, npm or yarn)
+├── requirements.txt             # Backend dependencies (for example, Flask/FastAPI)
+├── Dockerfile                   # Docker configuration for the whole app (optional)
+└── README.md  

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Draw - Game</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <!-- Logo in the top-right corner -->
+    <img id="logo" src="assets/logo.png" alt="Logo" />
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <h1>Quick Draw!</h1>
+        <p id="instruction">Draw the object: <span id="object-placeholder">[Placeholder]</span></p>
+        <button id="start-button">Start Game</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <h1>Quick Draw!</h1>
+        <p>Draw the object: <span id="current-object">[Object Name]</span></p>
+        <p id="timer">Time left: <span id="time-left">30</span> seconds</p>
+        <canvas id="drawing-canvas"></canvas>
+        <div id="controls">
+            <button id="clear-button">Clear</button>
+        </div>
+    </div>
+
+    <!-- Post-Game Screen -->
+    <div id="post-game-screen" class="screen">
+        <h1>Time's Up!</h1>
+        <p id="model-guess">The model thought you drew: [Model Guess Placeholder]</p>
+        <button id="restart-button">Play Again</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
