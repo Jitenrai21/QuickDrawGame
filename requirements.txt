@@ -2,3 +2,8 @@ fastapi
 uvicorn
 tensorflow
 pydantic
+numpy
+opencv-python
+pandas
+ndjson
+scikit-learn
