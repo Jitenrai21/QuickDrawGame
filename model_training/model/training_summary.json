@@ -1,0 +1,18 @@
+{
+  "model_name": "Apple vs Banana CNN Classifier",
+  "test_accuracy": 0.725430428981781,
+  "best_val_accuracy": 0.7246056795120239,
+  "total_params": 101954,
+  "input_shape": [
+    32,
+    32,
+    1
+  ],
+  "classes": [
+    "apple",
+    "banana"
+  ],
+  "training_epochs": 43,
+  "batch_size": 32,
+  "learning_rate": 0.001
+}

@@ -7,3 +7,4 @@ opencv-python
 pandas
 ndjson
 scikit-learn
+seaborn
