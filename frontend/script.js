@@ -8,14 +8,17 @@ const timeLeftDisplay = document.getElementById("time-left");
 const currentObjectDisplay = document.getElementById("current-object");
 const objectPlaceholder = document.getElementById("object-placeholder");
 const clearButton = document.getElementById("clear-button");
+const modelGuessDisplay = document.getElementById("model-guess");
 const canvas = document.getElementById("drawing-canvas");
 const ctx = canvas.getContext("2d");
 
+// Game state variables
 let drawing = false;
 let lastX = 0;
 let lastY = 0;
 let timeLeft = 30;
 let timer;
+let currentObject = "";
 
 // Array to hold the sequence of drawing coordinates
 let drawingData = [];
@@ -24,17 +27,87 @@ let drawingData = [];
 canvas.width = 600;
 canvas.height = 400;
 
-// Placeholder for object to draw
-const objectToDraw = "Cat"; // Placeholder object
+// Configure canvas for better drawing
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+ctx.strokeStyle = '#000';
+ctx.lineWidth = 5;
 
-// Show start screen
+// API base URL - adjust if your backend runs on different port
+const API_BASE_URL = window.location.origin.includes('localhost') ? 
+    'http://localhost:8000' : window.location.origin;
+
+// Initialize the game
+document.addEventListener('DOMContentLoaded', function() {
+    initializeGame();
+});
+
+async function initializeGame() {
+    try {
+        // Check if the model is loaded
+        const modelInfo = await fetch(`${API_BASE_URL}/api/model-info`);
+        const info = await modelInfo.json();
+        
+        if (info.error) {
+            console.error('Model not loaded:', info.error);
+            alert('⚠️ Model not loaded. Please check the backend.');
+            return;
+        }
+        
+        console.log('✅ Model loaded successfully:', info);
+        
+        // Get initial random object
+        await getNewObject();
+        
+    } catch (error) {
+        console.error('Error initializing game:', error);
+        alert('❌ Failed to connect to backend. Please check if the server is running.');
+    }
+}
+
+// Get a new random object to draw
+async function getNewObject() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/random-object`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentObject = data.object;
+            const emoji = data.emoji;
+            objectPlaceholder.textContent = `${emoji} ${currentObject.charAt(0).toUpperCase() + currentObject.slice(1)}`;
+        } else {
+            // Fallback to local selection
+            const objects = ['apple', 'banana'];
+            currentObject = objects[Math.floor(Math.random() * objects.length)];
+            const emoji = currentObject === 'apple' ? '🍎' : '🍌';
+            objectPlaceholder.textContent = `${emoji} ${currentObject.charAt(0).toUpperCase() + currentObject.slice(1)}`;
+        }
+    } catch (error) {
+        console.error('Error getting random object:', error);
+        // Fallback
+        currentObject = 'apple';
+        objectPlaceholder.textContent = '🍎 Apple';
+    }
+}
+
+// Event listeners
 startButton.addEventListener("click", startGame);
+restartButton.addEventListener("click", restartGame);
+clearButton.addEventListener("click", clearCanvas);
 
 // Timer function
 function startTimer() {
     timer = setInterval(() => {
         timeLeft--;
         timeLeftDisplay.textContent = timeLeft;
+        
+        // Change color when time is running out
+        if (timeLeft <= 10) {
+            timeLeftDisplay.style.color = '#ff4444';
+        } else if (timeLeft <= 20) {
+            timeLeftDisplay.style.color = '#ff8800';
+        }
+        
         if (timeLeft <= 0) {
             clearInterval(timer);
             endGame();
@@ -42,41 +115,62 @@ function startTimer() {
     }, 1000);
 }
 
-// Start the game by hiding start screen and showing the game screen
+// Start the game
 function startGame() {
     startScreen.style.display = "none";
     gameScreen.style.display = "block";
-    currentObjectDisplay.textContent = objectToDraw; // Display object to draw
+    currentObjectDisplay.textContent = objectPlaceholder.textContent;
+    timeLeft = 30;
+    timeLeftDisplay.textContent = timeLeft;
+    timeLeftDisplay.style.color = '#333';
+    drawingData = [];
+    clearCanvas();
     startTimer();
 }
 
-// Draw on the canvas
+// Drawing event listeners
 canvas.addEventListener("mousedown", startDrawing);
 canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mouseup", stopDrawing);
 canvas.addEventListener("mouseout", stopDrawing);
-canvas.addEventListener("touchstart", startDrawing);
-canvas.addEventListener("touchmove", draw);
+
+// Touch events for mobile
+canvas.addEventListener("touchstart", handleTouch);
+canvas.addEventListener("touchmove", handleTouch);
 canvas.addEventListener("touchend", stopDrawing);
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type.replace('touch', 'mouse'), {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    canvas.dispatchEvent(mouseEvent);
+}
 
 function startDrawing(e) {
     drawing = true;
     [lastX, lastY] = getCoordinates(e);
+    
+    // Add the starting point to drawing data
+    drawingData.push({ x: lastX, y: lastY });
 }
 
 function draw(e) {
     if (!drawing) return;
+    
     const [x, y] = getCoordinates(e);
     
     // Store the drawing coordinates
     drawingData.push({ x, y });
     
+    // Draw on canvas
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 5;
     ctx.stroke();
+    
     [lastX, lastY] = [x, y];
 }
 
@@ -84,65 +178,200 @@ function stopDrawing() {
     drawing = false;
 }
 
-// Get coordinates for touch or mouse events
+// Get coordinates for mouse events
 function getCoordinates(e) {
-    if (e.touches) {
-        return [e.touches[0].clientX - canvas.offsetLeft, e.touches[0].clientY - canvas.offsetTop];
-    } else {
-        return [e.offsetX, e.offsetY];
+    const rect = canvas.getBoundingClientRect();
+    return [
+        e.clientX - rect.left,
+        e.clientY - rect.top
+    ];
+}
+
+// Clear canvas
+function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawingData = [];
+}
+
+// End game and get prediction
+async function endGame() {
+    gameScreen.style.display = "none";
+    postGameScreen.style.display = "block";
+    
+    // Show loading message
+    modelGuessDisplay.innerHTML = '<div style="color: #666;">🤔 Analyzing your drawing...</div>';
+    
+    await sendDrawingData();
+}
+
+// Send drawing data to backend for recognition
+async function sendDrawingData() {
+    if (drawingData.length === 0) {
+        modelGuessDisplay.innerHTML = `
+            <div style="color: #ff4444;">
+                <strong>❌ No drawing detected!</strong><br>
+                <small>You need to draw something for me to recognize!</small>
+            </div>
+        `;
+        return;
+    }
+
+    const requestData = {
+        drawing: drawingData,
+        object: currentObject
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/recognize-drawing`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Check if the response is ok
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("Server responded with error:", response.status, errorData);
+            
+            let errorMessage = `Server error (${response.status})`;
+            if (errorData.detail) {
+                errorMessage += `: ${JSON.stringify(errorData.detail)}`;
+            } else if (errorData.error) {
+                errorMessage += `: ${errorData.error}`;
+            }
+            
+            modelGuessDisplay.innerHTML = `
+                <div style="color: #ff4444;">
+                    <strong>❌ ${errorMessage}</strong><br>
+                    <small>Please try drawing again or check the server logs.</small>
+                </div>
+            `;
+            return;
+        }
+
+        const data = await response.json();
+        console.log("✅ Received response:", data);
+
+        if (data.error) {
+            modelGuessDisplay.innerHTML = `
+                <div style="color: #ff4444;">
+                    <strong>❌ Error:</strong> ${data.error}<br>
+                    <small>Please try again or check if the backend is running.</small>
+                </div>
+            `;
+            return;
+        }
+
+        // Display comprehensive results
+        displayPredictionResults(data);
+
+    } catch (error) {
+        console.error("Error sending drawing data:", error);
+        modelGuessDisplay.innerHTML = `
+            <div style="color: #ff4444;">
+                <strong>❌ Network Error</strong><br>
+                <small>Could not connect to the AI model: ${error.message}</small>
+            </div>
+        `;
     }
 }
 
-// Clear canvas on button click
-clearButton.addEventListener("click", clearCanvas);
+// Display detailed prediction results
+function displayPredictionResults(data) {
+    const prediction = data.prediction;
+    const expectedObject = data.expected_object;
+    const isCorrect = data.is_correct;
+    const confidence = Math.round(data.confidence * 100);
+    const appleConf = Math.round(data.apple_confidence * 100);
+    const bananaConf = Math.round(data.banana_confidence * 100);
 
-function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawingData = [];  // Clear the drawing data when clearing the canvas
+    // Get emojis
+    const predEmoji = prediction === 'apple' ? '🍎' : '🍌';
+    const expectedEmoji = expectedObject === 'apple' ? '🍎' : '🍌';
+    const resultEmoji = isCorrect ? '🎉' : '😅';
+
+    // Create result HTML
+    const resultHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <h2 style="margin-bottom: 15px;">
+                ${resultEmoji} ${isCorrect ? 'Correct!' : 'Not quite...'}
+            </h2>
+            
+            <div style="margin-bottom: 15px;">
+                <strong>Expected:</strong> ${expectedEmoji} ${expectedObject.charAt(0).toUpperCase() + expectedObject.slice(1)}<br>
+                <strong>I guessed:</strong> ${predEmoji} ${prediction.charAt(0).toUpperCase() + prediction.slice(1)}
+            </div>
+
+            <div style="margin-bottom: 15px; color: ${confidence > 70 ? '#4CAF50' : confidence > 40 ? '#FF9800' : '#F44336'}">
+                <strong>Confidence: ${confidence}%</strong>
+            </div>
+
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                <small><strong>Detailed Analysis:</strong></small><br>
+                <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                    <span>🍎 Apple: ${appleConf}%</span>
+                    <span>🍌 Banana: ${bananaConf}%</span>
+                </div>
+            </div>
+
+            <div style="color: #666; font-style: italic;">
+                ${data.message || 'Thanks for playing!'}
+            </div>
+        </div>
+    `;
+
+    modelGuessDisplay.innerHTML = resultHTML;
 }
 
-// End game after timer
-function endGame() {
-    gameScreen.style.display = "none";
-    postGameScreen.style.display = "block";
-    sendDrawingData();  // Send the drawing data to the backend
-    document.getElementById("model-guess").textContent = "Time's up!";
-}
-
-// Function to send the drawing data to the backend for recognition
-function sendDrawingData() {
-    const data = {
-        drawing: drawingData,  // Send the captured drawing data (coordinates)
-        object: objectToDraw,  // Include the object to draw as part of the data (optional)
-    };
-
-    // Send the drawing data to the backend using fetch
-    fetch("/api/recognize-drawing", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),  // Send the drawing data as JSON
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Handle the response (e.g., show model's prediction or time's up message)
-        console.log(data);
-        document.getElementById("model-guess").textContent = `Model Prediction: ${data.prediction}`;
-    })
-    .catch(error => {
-        console.error("Error sending drawing data:", error);
-    });
-}
-
-// Restart game by resetting everything
-restartButton.addEventListener("click", restartGame);
-
-function restartGame() {
+// Restart game
+async function restartGame() {
     postGameScreen.style.display = "none";
     startScreen.style.display = "block";
+    
+    // Reset game state
     timeLeft = 30;
     timeLeftDisplay.textContent = timeLeft;
-    drawingData = [];  // Clear the drawing data for a new game
+    timeLeftDisplay.style.color = '#333';
+    drawingData = [];
     clearCanvas();
+    
+    // Get a new object to draw
+    await getNewObject();
 }
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'c' || e.key === 'C') {
+        if (gameScreen.style.display === 'block') {
+            clearCanvas();
+        }
+    }
+    if (e.key === 'Enter') {
+        if (startScreen.style.display !== 'none') {
+            startGame();
+        } else if (postGameScreen.style.display !== 'none') {
+            restartGame();
+        }
+    }
+});
+
+// Prevent scrolling when drawing on mobile
+document.body.addEventListener('touchstart', function(e) {
+    if (e.target === canvas) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+document.body.addEventListener('touchend', function(e) {
+    if (e.target === canvas) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+document.body.addEventListener('touchmove', function(e) {
+    if (e.target === canvas) {
+        e.preventDefault();
+    }
+}, { passive: false });
