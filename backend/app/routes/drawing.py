@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from app.models.drawing_model import predict_drawing, get_random_object, get_model_info
+from app.models.drawing_model import predict_drawing, get_random_object, get_model_info, get_class_emoji
 from pydantic import BaseModel
 from typing import List, Dict
 
@@ -15,11 +15,10 @@ class CoordinatePoint(BaseModel):
 
 router = APIRouter()
 
-# Route to handle the drawing and make predictions
 @router.post("/api/recognize-drawing")
 async def recognize_drawing(data: DrawingData):
     """
-    Recognize if a drawing is an apple or banana
+    Recognize drawing from 15 QuickDraw classes
     """
     try:
         drawing = data.drawing
@@ -64,10 +63,9 @@ async def recognize_drawing(data: DrawingData):
             "expected_object": object_to_draw,
             "is_correct": is_correct,
             "confidence": prediction_result["confidence"],
-            "apple_confidence": prediction_result.get("apple_confidence", 0),
-            "banana_confidence": prediction_result.get("banana_confidence", 0),
+            "top_predictions": prediction_result.get("top_predictions", {}),
             "all_probabilities": prediction_result.get("all_probabilities", {}),
-            "message": f"I think you drew a {predicted_object}!" if prediction_result["confidence"] > 0.7 else f"I'm not sure, but I think it might be a {predicted_object}."
+            "message": f"I think you drew a {predicted_object}!" if prediction_result["confidence"] > 0.5 else f"I'm not sure, but I think it might be a {predicted_object}."
         }
         
     except Exception as e:
@@ -83,18 +81,18 @@ async def recognize_drawing(data: DrawingData):
             }
         )
 
-# Route to get a random object to draw
 @router.get("/api/random-object")
 async def get_random_drawing_object():
     """
-    Get a random object for the user to draw (Apple or Banana)
+    Get a random object for the user to draw from 21 QuickDraw classes
     """
     try:
         random_object = get_random_object()
+        emoji = get_class_emoji(random_object)
         return {
             "success": True,
             "object": random_object,
-            "emoji": "🍎" if random_object == "apple" else "🍌"
+            "emoji": emoji
         }
     except Exception as e:
         return JSONResponse(
@@ -117,7 +115,6 @@ async def model_info():
             content={"error": f"Server error: {str(e)}"}
         )
 
-# Health check endpoint
 @router.get("/api/health")
 async def health_check():
     """
@@ -125,6 +122,6 @@ async def health_check():
     """
     return {
         "status": "healthy",
-        "message": "Apple vs Banana QuickDraw API is running!",
-        "version": "1.0.0"
+        "message": "QuickDraw 15-Class API is running!",
+        "version": "2.0.0"
     }

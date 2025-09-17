@@ -1,26 +1,28 @@
-# 🍎🍌 QuickDraw Apple vs Banana - Full Stack Integration
+# � QuickDraw Game - AI-Powered Drawing Recognition
 
-A full-stack AI-powered drawing game where users draw apples or bananas and a trained CNN model tries to recognize them in real-time.
+A full-stack AI-powered drawing game where users draw objects and a trained CNN model tries to recognize them in real-time.
 
 ## 🏗️ Architecture Overview
 
 ```
 QuickDrawGame/
-├── 🎨 frontend/           # React-like vanilla JS frontend
-├── ⚙️ backend/            # FastAPI backend with ML model
+├── 🎨 frontend/           # Vanilla JS frontend with canvas drawing
+├── ⚙️ backend/            # FastAPI backend with ML model integration
 ├── 🤖 model_training/     # Jupyter notebook & trained models
 ├── 📋 requirements.txt    # Python dependencies
-├── 🚀 start_server.py     # Easy server startup
-└── 🧪 test_integration.py # Integration tests
+├── � features_onTrad     # Feature data files
+├── 📁 labels_onTrad       # Label data files
+└── 📖 Project_Structure   # Project structure documentation
 ```
 
 ## ✨ Features
 
 - **Real-time Drawing Recognition**: Draw with mouse/touch, get instant AI feedback
-- **Apple vs Banana Binary Classification**: Trained CNN model with 85%+ accuracy
+- **Multi-class Drawing Classification**: Trained CNN model for various object recognition
 - **Responsive Design**: Works on desktop and mobile devices
 - **Detailed Results**: Shows confidence scores and analysis
-- **Modern UI**: Beautiful gradient background with smooth animations
+- **Modern UI**: Beautiful styling with smooth animations
+- **Confidence Calibration**: Enhanced model training with calibrated confidence scores
 
 ## 🚀 Quick Start
 
@@ -30,22 +32,22 @@ pip install -r requirements.txt
 ```
 
 ### 2. Verify Model Training
-Ensure your model is trained and saved in `model_training/model/`:
-- `apple_banana_final_model.keras` (preferred)
-- `apple_banana_final_model.h5` (fallback)
+Ensure your model is trained and saved in `model_training/model_trad/`:
+- `QuickDraw_CALIBRATED_FINAL_64x64.keras` (recommended)
+- `QuickDraw_improved_64x64_final.keras` (alternative)
+- Or any other trained model from the `model_trad/` directory
 
-### 3. Test Integration
+### 3. Start Backend Server
 ```bash
-python test_integration.py
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 4. Start Server
-```bash
-python start_server.py
-```
+### 4. Open Frontend
+Open `frontend/index.html` in your browser or serve it through a web server.
 
 ### 5. Play the Game!
-Open your browser and go to: `http://localhost:8000/static/index.html`
+Start drawing and see what the AI recognizes!
 
 ## 🔧 Technical Details
 
@@ -65,25 +67,26 @@ Open your browser and go to: `http://localhost:8000/static/index.html`
 - **Error Handling**: Graceful handling of network/server issues
 
 ### Model Integration
-- **Input Processing**: Drawing coordinates → 32x32 grayscale image
+- **Input Processing**: Drawing coordinates → 64x64 grayscale image
 - **Normalization**: Pixel values normalized to [0,1] range
-- **Prediction**: Binary classification with confidence scores
+- **Prediction**: Multi-class classification with confidence scores
+- **Calibration**: Enhanced confidence calibration for better reliability
 - **Output**: Detailed results with per-class probabilities
 
 ## 📊 Model Performance
 
-Based on training results:
-- **Test Accuracy**: ~64-85% (varies with dataset size)
-- **Model Size**: ~100K parameters
-- **Input**: 32x32x1 grayscale images
-- **Classes**: Apple (🍎), Banana (🍌)
+Based on training results from `confidence_calibrated_training.ipynb`:
+- **Model Architecture**: Improved CNN with calibration
+- **Input Size**: 64x64x1 grayscale images
+- **Training**: Confidence calibrated for better reliability
+- **Available Models**: Multiple trained variants in `model_trad/` directory
 
 ## 🎮 How to Play
 
-1. **Start Game**: Click "🚀 Start Game"
-2. **Draw**: You have 30 seconds to draw the requested object
-3. **Results**: See what the AI thinks you drew!
-4. **Play Again**: Try to improve your drawing skills
+1. **Start Drawing**: Use your mouse or touch to draw on the canvas
+2. **Submit Drawing**: Click the submit button when you're done
+3. **View Results**: See what the AI thinks you drew with confidence scores
+4. **Try Again**: Clear the canvas and draw something new
 
 ## 🛠️ Development
 
@@ -96,14 +99,15 @@ uvicorn app.main:app --reload
 ### Adding New Features
 
 #### New Object Classes
-1. Retrain model with additional classes in `train_apple_banana_model.ipynb`
+1. Retrain model with additional classes in `confidence_calibrated_training.ipynb`
 2. Update `CLASS_LABELS` in `drawing_model.py`
 3. Update frontend object selection logic
 
 #### Improve Model Accuracy
-1. Use full dataset instead of limited samples
-2. Add data augmentation
-3. Try the improved CNN architecture in the notebook
+1. Use different training datasets
+2. Add data augmentation techniques
+3. Try different CNN architectures available in the notebook
+4. Experiment with confidence calibration methods
 
 ### API Endpoints
 
@@ -111,7 +115,7 @@ uvicorn app.main:app --reload
 ```json
 {
   "drawing": [{"x": 100, "y": 150}, ...],
-  "object": "apple"
+  "object": "drawing_object"
 }
 ```
 
@@ -119,21 +123,20 @@ Response:
 ```json
 {
   "success": true,
-  "prediction": "apple",
+  "prediction": "predicted_class",
   "confidence": 0.87,
-  "apple_confidence": 0.87,
-  "banana_confidence": 0.13,
-  "is_correct": true,
-  "message": "I think you drew an apple!"
+  "class_probabilities": {...},
+  "message": "Prediction result message"
 }
 ```
 
-#### GET `/api/random-object`
+#### GET `/api/model-info`
 ```json
 {
   "success": true,
-  "object": "banana",
-  "emoji": "🍌"
+  "model_loaded": true,
+  "model_path": "model_trad/QuickDraw_CALIBRATED_FINAL_64x64.keras",
+  "input_shape": [64, 64, 1]
 }
 ```
 
@@ -142,39 +145,43 @@ Response:
 ### Common Issues
 
 1. **Model Not Loading**
-   - Check if model files exist in `model_training/model/`
+   - Check if model files exist in `model_training/model_trad/`
    - Verify TensorFlow installation: `pip install tensorflow`
+   - Ensure correct model path in `drawing_model.py`
 
 2. **CORS Errors**
-   - Backend includes CORS middleware for all origins
-   - If issues persist, check browser developer tools
+   - Backend should include CORS middleware for frontend access
+   - Check browser developer tools for specific errors
 
 3. **Drawing Not Recognized**
-   - Draw clearly and fill more of the canvas
+   - Draw clearly and use more of the canvas area
    - Ensure drawing has sufficient detail
-   - Check model accuracy in training notebook
+   - Check model training quality in the notebook
 
 4. **Server Won't Start**
    - Install dependencies: `pip install -r requirements.txt`
-   - Check port 8000 is available
-   - Run from project root directory
+   - Check if port 8000 is available
+   - Run uvicorn from the backend directory
 
 ### Development Tips
 
 1. **Model Improvements**
-   - Load full dataset in training notebook
-   - Use data augmentation
-   - Try improved CNN architecture
+   - Experiment with different models in `model_trad/`
+   - Use confidence calibration techniques
+   - Try different CNN architectures
+   - Implement ensemble methods
 
 2. **Frontend Enhancements**
-   - Add drawing hints/guides
-   - Implement scoring system
-   - Add sound effects
+   - Add drawing tools and brush sizes
+   - Implement drawing tutorials
+   - Add animation effects
+   - Improve mobile responsiveness
 
 3. **Backend Optimizations**
-   - Add model caching
+   - Add model caching and optimization
    - Implement batch predictions
    - Add request rate limiting
+   - Enhance error handling
 
 ## 📱 Mobile Support
 
@@ -186,12 +193,23 @@ The game is fully responsive and supports:
 
 ## 🔮 Future Enhancements
 
-- [ ] Add more object classes (fruits, animals, etc.)
-- [ ] Implement user scoring system
+- [ ] Add more object classes and training data
+- [ ] Implement user scoring and progress tracking
 - [ ] Add multiplayer functionality
 - [ ] Progressive Web App (PWA) support
 - [ ] Real-time collaborative drawing
-- [ ] Drawing tutorials and hints
+- [ ] Advanced drawing tools and features
+- [ ] Model ensemble and improved accuracy
+- [ ] Mobile app development
+
+## 📚 Training Details
+
+The model training is handled in `confidence_calibrated_training.ipynb` which includes:
+- Data preprocessing and augmentation
+- CNN architecture design and optimization
+- Confidence calibration techniques
+- Model evaluation and comparison
+- Multiple model variants in `model_trad/` directory
 
 ## 📄 License
 
@@ -207,4 +225,4 @@ This project is for educational and demonstration purposes. The QuickDraw datase
 
 ---
 
-**Happy Drawing! 🎨🍎🍌**
+**Happy Drawing! 🎨✨**

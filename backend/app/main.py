@@ -6,9 +6,9 @@ import os
 
 # Create FastAPI app
 app = FastAPI(
-    title="QuickDraw Apple vs Banana API",
-    description="AI-powered drawing recognition for apples and bananas",
-    version="1.0.0"
+    title="QuickDraw 15-Class API",
+    description="AI-powered drawing recognition for 15 QuickDraw classes",
+    version="2.0.0"
 )
 
 # Configure CORS
@@ -44,14 +44,14 @@ else:
             if os.path.isdir(os.path.join(parent_dir, item)):
                 print(f"   📂 {item}")
 
-# Root endpoint
 @app.get("/")
 async def root():
     return {
-        "message": "Welcome to QuickDraw Apple vs Banana API!",
+        "message": "Welcome to QuickDraw 15-Class API!",
         "docs": "/docs", 
         "frontend": "/static/index.html",
-        "game": "Open /static/index.html to play the game!"
+        "game": "Open /static/index.html to play the game!",
+        "classes": "15 classes: apple, bowtie, candle, door, envelope, fish, guitar, ice cream, lightning, moon, mountain, star, tent, toothbrush, wristwatch"
     }
 
 # Serve the game directly
@@ -61,10 +61,9 @@ async def serve_game():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/static/index.html")
 
-# Health check
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "QuickDraw API"}
+    return {"status": "healthy", "service": "QuickDraw 15-Class API"}
 
 if __name__ == "__main__":
     import uvicorn

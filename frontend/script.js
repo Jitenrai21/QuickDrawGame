@@ -9,6 +9,7 @@ const currentObjectDisplay = document.getElementById("current-object");
 const objectPlaceholder = document.getElementById("object-placeholder");
 const clearButton = document.getElementById("clear-button");
 const modelGuessDisplay = document.getElementById("model-guess");
+const predictionTextDisplay = document.getElementById("prediction-text");
 const canvas = document.getElementById("drawing-canvas");
 const ctx = canvas.getContext("2d");
 
@@ -19,12 +20,24 @@ let lastY = 0;
 let timeLeft = 30;
 let timer;
 let currentObject = "";
+let gameActive = false;
+let gameWon = false;
 
-// Array to hold the sequence of drawing coordinates
+// Real-time evaluation variables
+let evaluationTimeout;
+let lastEvaluationTime = 0;
+const EVALUATION_DELAY = 1000; // 1 second delay between evaluations
+let isEvaluating = false;
+
+// Array to hold the sequence of drawing coordinates with stroke information
+// Updated for square canvas (400x400)
 let drawingData = [];
+let currentStroke = []; // Track current stroke
+let strokeStartTime = 0;
+const CANVAS_SIZE = { width: 400, height: 400 }; // Square canvas constants
 
-// Set canvas size
-canvas.width = 600;
+// Set canvas size - Square canvas for better aspect ratio
+canvas.width = 400;
 canvas.height = 400;
 
 // Configure canvas for better drawing
@@ -36,6 +49,13 @@ ctx.lineWidth = 5;
 // API base URL - adjust if your backend runs on different port
 const API_BASE_URL = window.location.origin.includes('localhost') ? 
     'http://localhost:8000' : window.location.origin;
+
+// Global emoji mapping for all objects
+const emojiMap = {
+    'apple': '🍎', 'bowtie': '🎀', 'candle': '🕯️', 'door': '🚪', 'envelope': '✉️',
+    'fish': '🐟', 'guitar': '🎸', 'ice cream': '🍦', 'lightning': '⚡', 'moon': '🌙',
+    'mountain': '⛰️', 'star': '⭐', 'tent': '⛺', 'toothbrush': '🪥', 'wristwatch': '⌚'
+};
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', function() {
@@ -76,10 +96,13 @@ async function getNewObject() {
             const emoji = data.emoji;
             objectPlaceholder.textContent = `${emoji} ${currentObject.charAt(0).toUpperCase() + currentObject.slice(1)}`;
         } else {
-            // Fallback to local selection
-            const objects = ['apple', 'banana'];
+            // Fallback to local selection from 15 classes - Updated to match backend
+            const objects = [
+                'apple', 'bowtie', 'candle', 'door', 'envelope', 'fish', 'guitar', 'ice cream', 'lightning', 'moon',
+                'mountain', 'star', 'tent', 'toothbrush', 'wristwatch'
+            ];
             currentObject = objects[Math.floor(Math.random() * objects.length)];
-            const emoji = currentObject === 'apple' ? '🍎' : '🍌';
+            const emoji = emojiMap[currentObject] || '❓';
             objectPlaceholder.textContent = `${emoji} ${currentObject.charAt(0).toUpperCase() + currentObject.slice(1)}`;
         }
     } catch (error) {
@@ -98,6 +121,12 @@ clearButton.addEventListener("click", clearCanvas);
 // Timer function
 function startTimer() {
     timer = setInterval(() => {
+        // Don't continue timer if game was won early
+        if (gameWon || !gameActive) {
+            clearInterval(timer);
+            return;
+        }
+        
         timeLeft--;
         timeLeftDisplay.textContent = timeLeft;
         
@@ -110,6 +139,7 @@ function startTimer() {
         
         if (timeLeft <= 0) {
             clearInterval(timer);
+            gameActive = false;
             endGame();
         }
     }, 1000);
@@ -124,8 +154,118 @@ function startGame() {
     timeLeftDisplay.textContent = timeLeft;
     timeLeftDisplay.style.color = '#333';
     drawingData = [];
+    gameActive = true;
+    gameWon = false;
+    isEvaluating = false;
+    
+    // Reset prediction display
+    if (predictionTextDisplay) {
+        predictionTextDisplay.textContent = "Start drawing...";
+    }
+    
     clearCanvas();
     startTimer();
+}
+
+// Real-time drawing evaluation with debouncing
+async function evaluateDrawingRealTime() {
+    // Don't evaluate if game is not active or already won
+    if (!gameActive || gameWon || isEvaluating) return;
+    
+    // Don't evaluate if there's not enough drawing data
+    if (drawingData.length < 10) return;
+    
+    // Debouncing: don't evaluate too frequently
+    const now = Date.now();
+    if (now - lastEvaluationTime < EVALUATION_DELAY) return;
+    
+    lastEvaluationTime = now;
+    isEvaluating = true;
+    
+    try {
+        const requestData = {
+            drawing: drawingData,
+            object: currentObject
+        };
+
+        const response = await fetch(`${API_BASE_URL}/api/recognize-drawing`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            console.warn("Real-time evaluation failed:", response.status);
+            return;
+        }
+
+        const data = await response.json();
+        
+        if (data.error) {
+            console.warn("Real-time evaluation error:", data.error);
+            return;
+        }
+
+        // NEW SUCCESS LOGIC: Check if highest confidence prediction matches current object
+        const highestPrediction = data.prediction.toLowerCase();
+        const targetObject = currentObject.toLowerCase();
+        const isCorrectPrediction = highestPrediction === targetObject;
+        
+        // Update AI prediction display (object name only, no confidence)
+        if (predictionTextDisplay && gameActive) {
+            const emoji = emojiMap[highestPrediction] || '🤔';
+            const capitalizedPrediction = highestPrediction.charAt(0).toUpperCase() + highestPrediction.slice(1);
+            const displayText = `${emoji} ${capitalizedPrediction}`;
+            predictionTextDisplay.textContent = displayText;
+            console.log('AI prediction updated:', displayText); // Debug log
+        }
+        
+        if (isCorrectPrediction) {
+            // SUCCESS! Highest confidence prediction matches target
+            gameWon = true;
+            gameActive = false;
+            const actualTime = 30 - timeLeft;
+            clearInterval(timer);
+            showImmediateSuccess(data, actualTime);
+        }
+        
+    } catch (error) {
+        console.warn("Real-time evaluation network error:", error);
+    } finally {
+        isEvaluating = false;
+    }
+}
+
+// Show immediate success screen
+function showImmediateSuccess(data, actualTime) {
+    gameScreen.style.display = "none";
+    postGameScreen.style.display = "block";
+    
+    // Get emoji from global mapping
+    const emoji = emojiMap[currentObject] || '❓';
+    
+    const successHTML = `
+        <div style="text-align: center; padding: 40px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #28a745, #20c997); border-radius: 20px; color: white;">
+            <div style="font-size: 6em; margin-bottom: 30px;">🎉</div>
+            <h1 style="margin-bottom: 20px; font-size: 3em; font-weight: 700;">
+                AMAZING!
+            </h1>
+            <h2 style="margin-bottom: 30px; font-size: 2em; opacity: 0.9;">
+                AI Recognized Your ${emoji} ${currentObject.toUpperCase()}!
+            </h2>
+            
+            <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 15px; margin: 20px 0;">
+                <div style="font-size: 1.3em; line-height: 1.6;">
+                    🚀 Perfect! The AI recognized your drawing!<br>
+                    Great job on your artistic skills! 🎨
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modelGuessDisplay.innerHTML = successHTML;
 }
 
 // Drawing event listeners
@@ -152,18 +292,20 @@ function handleTouch(e) {
 function startDrawing(e) {
     drawing = true;
     [lastX, lastY] = getCoordinates(e);
+    strokeStartTime = Date.now();
     
-    // Add the starting point to drawing data
-    drawingData.push({ x: lastX, y: lastY });
+    // Start a new stroke
+    currentStroke = [{ x: lastX, y: lastY, timestamp: strokeStartTime }];
 }
 
 function draw(e) {
     if (!drawing) return;
     
     const [x, y] = getCoordinates(e);
+    const currentTime = Date.now();
     
-    // Store the drawing coordinates
-    drawingData.push({ x, y });
+    // Add point to current stroke
+    currentStroke.push({ x, y, timestamp: currentTime });
     
     // Draw on canvas
     ctx.beginPath();
@@ -175,6 +317,37 @@ function draw(e) {
 }
 
 function stopDrawing() {
+    if (drawing && currentStroke.length > 0) {
+        // Add the completed stroke to drawing data
+        drawingData = drawingData.concat(currentStroke);
+        
+        // Add a small gap indicator for stroke separation
+        if (currentStroke.length > 1) {
+            const lastPoint = currentStroke[currentStroke.length - 1];
+            // Add a point far away to indicate stroke end
+            drawingData.push({ 
+                x: lastPoint.x + 100, 
+                y: lastPoint.y + 100, 
+                timestamp: Date.now(),
+                strokeEnd: true 
+            });
+        }
+        
+        currentStroke = [];
+        
+        // Trigger real-time evaluation after each stroke completion
+        if (gameActive && !gameWon) {
+            // Clear any pending evaluation
+            if (evaluationTimeout) {
+                clearTimeout(evaluationTimeout);
+            }
+            
+            // Schedule evaluation with slight delay to allow for multi-stroke drawings
+            evaluationTimeout = setTimeout(() => {
+                evaluateDrawingRealTime();
+            }, 500); // 500ms delay after stroke completion
+        }
+    }
     drawing = false;
 }
 
@@ -191,15 +364,33 @@ function getCoordinates(e) {
 function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawingData = [];
+    currentStroke = [];
+    
+    // Reset prediction display when clearing
+    if (predictionTextDisplay && gameActive) {
+        predictionTextDisplay.textContent = "Start drawing...";
+    }
+    
+    // Clear any pending evaluations
+    if (evaluationTimeout) {
+        clearTimeout(evaluationTimeout);
+        evaluationTimeout = null;
+    }
 }
 
 // End game and get prediction
 async function endGame() {
+    // If game was already won through real-time recognition, don't process again
+    if (gameWon) {
+        return;
+    }
+    
+    gameActive = false;
     gameScreen.style.display = "none";
     postGameScreen.style.display = "block";
     
     // Show loading message
-    modelGuessDisplay.innerHTML = '<div style="color: #666;">🤔 Analyzing your drawing...</div>';
+    modelGuessDisplay.innerHTML = '<div style="color: #666;">🤔 Analyzing your final drawing...</div>';
     
     await sendDrawingData();
 }
@@ -278,46 +469,47 @@ async function sendDrawingData() {
     }
 }
 
-// Display detailed prediction results
+// Display simplified prediction results
 function displayPredictionResults(data) {
     const prediction = data.prediction;
     const expectedObject = data.expected_object;
     const isCorrect = data.is_correct;
-    const confidence = Math.round(data.confidence * 100);
-    const appleConf = Math.round(data.apple_confidence * 100);
-    const bananaConf = Math.round(data.banana_confidence * 100);
 
-    // Get emojis
-    const predEmoji = prediction === 'apple' ? '🍎' : '🍌';
-    const expectedEmoji = expectedObject === 'apple' ? '🍎' : '🍌';
+    // Get emojis from global mapping
+    const predEmoji = emojiMap[prediction] || '❓';
+    const expectedEmoji = emojiMap[expectedObject] || '❓';
     const resultEmoji = isCorrect ? '🎉' : '😅';
 
-    // Create result HTML
+    // Simple and clean result HTML
     const resultHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <h2 style="margin-bottom: 15px;">
-                ${resultEmoji} ${isCorrect ? 'Correct!' : 'Not quite...'}
+        <div style="text-align: center; padding: 40px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, ${isCorrect ? '#28a745, #20c997' : '#6c757d, #495057'}); border-radius: 20px; color: white;">
+            <div style="font-size: 6em; margin-bottom: 30px;">${resultEmoji}</div>
+            <h2 style="margin-bottom: 30px; font-size: 3em; font-weight: 700;">
+                ${isCorrect ? 'PERFECT!' : 'NICE TRY!'}
             </h2>
             
-            <div style="margin-bottom: 15px;">
-                <strong>Expected:</strong> ${expectedEmoji} ${expectedObject.charAt(0).toUpperCase() + expectedObject.slice(1)}<br>
-                <strong>I guessed:</strong> ${predEmoji} ${prediction.charAt(0).toUpperCase() + prediction.slice(1)}
-            </div>
-
-            <div style="margin-bottom: 15px; color: ${confidence > 70 ? '#4CAF50' : confidence > 40 ? '#FF9800' : '#F44336'}">
-                <strong>Confidence: ${confidence}%</strong>
-            </div>
-
-            <div style="background: #f5f5f5; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-                <small><strong>Detailed Analysis:</strong></small><br>
-                <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-                    <span>🍎 Apple: ${appleConf}%</span>
-                    <span>🍌 Banana: ${bananaConf}%</span>
+            <div style="background: rgba(255,255,255,0.15); padding: 25px; border-radius: 15px; margin: 25px 0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">🎯 YOU DREW</div>
+                        <div style="font-size: 3em; margin-bottom: 10px;">${expectedEmoji}</div>
+                        <div style="font-size: 1.3em; font-weight: 600;">${expectedObject.toUpperCase()}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-weight: bold; margin-bottom: 10px; font-size: 1.1em;">🤖 AI SAW</div>
+                        <div style="font-size: 3em; margin-bottom: 10px;">${predEmoji}</div>
+                        <div style="font-size: 1.3em; font-weight: 600;">${prediction.toUpperCase()}</div>
+                    </div>
                 </div>
             </div>
 
-            <div style="color: #666; font-style: italic;">
-                ${data.message || 'Thanks for playing!'}
+            <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin: 20px 0;">
+                <div style="font-size: 1.3em; line-height: 1.6;">
+                    ${isCorrect 
+                        ? "🌟 Excellent drawing! The AI recognized it perfectly!" 
+                        : "🎨 Keep practicing! Try to emphasize the key features next time!"
+                    }
+                </div>
             </div>
         </div>
     `;
@@ -335,6 +527,27 @@ async function restartGame() {
     timeLeftDisplay.textContent = timeLeft;
     timeLeftDisplay.style.color = '#333';
     drawingData = [];
+    gameActive = false;
+    gameWon = false;
+    isEvaluating = false;
+    
+    // Reset prediction display
+    if (predictionTextDisplay) {
+        predictionTextDisplay.textContent = "Start drawing...";
+    }
+    
+    // Clear any pending evaluations
+    if (evaluationTimeout) {
+        clearTimeout(evaluationTimeout);
+        evaluationTimeout = null;
+    }
+    
+    // Hide confidence display
+    const confidenceDisplay = document.getElementById('confidence-display');
+    if (confidenceDisplay) {
+        confidenceDisplay.style.opacity = '0';
+    }
+    
     clearCanvas();
     
     // Get a new object to draw

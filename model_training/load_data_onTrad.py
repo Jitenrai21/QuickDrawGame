@@ -2,7 +2,7 @@ import numpy as np
 import os
 import pickle
 
-files = os.listdir("F:\projects\QD\data")
+files = os.listdir(r"D:\QuickDrawDataset(npyfiles)-Trad")
 x = []
 x_load = []
 y = []
@@ -12,7 +12,7 @@ y_load = []
 def load_data():
     count = 0
     for file in files:
-        file = "F:\projects\QD\data\\" + file
+        file = r"D:\QuickDrawDataset(npyfiles)-Trad\\" + file
         x = np.load(file)
         x = x.astype('float32') / 255.
         x = x[0:10000, :]
@@ -33,7 +33,7 @@ features=features.reshape(features.shape[0]*features.shape[1],features.shape[2])
 labels=labels.reshape(labels.shape[0]*labels.shape[1],labels.shape[2])
 
 
-with open("features", "wb") as f:
+with open("features_onTrad", "wb") as f:
     pickle.dump(features, f, protocol=4)
-with open("labels", "wb") as f:
+with open("labels_onTrad", "wb") as f:
     pickle.dump(labels, f, protocol=4)
