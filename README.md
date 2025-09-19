@@ -24,7 +24,14 @@ QuickDrawGame/
 - **Modern UI**: Beautiful styling with smooth animations
 - **Confidence Calibration**: Enhanced model training with calibrated confidence scores
 
-## 🚀 Quick Start
+## 🎬 Demo Video
+
+<video width="600" controls>
+  <source src="./demo/quickdraw-demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+## Quick Start
 
 ### 1. Install Dependencies
 ```bash
