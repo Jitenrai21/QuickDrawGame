@@ -1,8 +1,8 @@
-# � QuickDraw Game - AI-Powered Drawing Recognition
+# 🎨 QuickDraw Game - AI-Powered Drawing Recognition
 
 A full-stack AI-powered drawing game where users draw objects and a trained CNN model tries to recognize them in real-time.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ```
 QuickDrawGame/
@@ -10,12 +10,12 @@ QuickDrawGame/
 ├── ⚙️ backend/            # FastAPI backend with ML model integration
 ├── 🤖 model_training/     # Jupyter notebook & trained models
 ├── 📋 requirements.txt    # Python dependencies
-├── � features_onTrad     # Feature data files
+├── ✨ features_onTrad     # Feature data files
 ├── 📁 labels_onTrad       # Label data files
 └── 📖 Project_Structure   # Project structure documentation
 ```
 
-## ✨ Features
+## Features
 
 - **Real-time Drawing Recognition**: Draw with mouse/touch, get instant AI feedback
 - **Multi-class Drawing Classification**: Trained CNN model for various object recognition
@@ -24,7 +24,14 @@ QuickDrawGame/
 - **Modern UI**: Beautiful styling with smooth animations
 - **Confidence Calibration**: Enhanced model training with calibrated confidence scores
 
-## 🚀 Quick Start
+## 🎬 Demo Video
+
+<video width="600" controls>
+  <source src="../demo/quickdraw-demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+## Quick Start
 
 ### 1. Install Dependencies
 ```bash
@@ -183,7 +190,7 @@ Response:
    - Add request rate limiting
    - Enhance error handling
 
-## 📱 Mobile Support
+## Mobile Support
 
 The game is fully responsive and supports:
 - Touch drawing on tablets/phones
@@ -191,7 +198,7 @@ The game is fully responsive and supports:
 - Mobile-friendly UI elements
 - Touch event handling
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 - [ ] Add more object classes and training data
 - [ ] Implement user scoring and progress tracking
@@ -210,10 +217,6 @@ The model training is handled in `confidence_calibrated_training.ipynb` which in
 - Confidence calibration techniques
 - Model evaluation and comparison
 - Multiple model variants in `model_trad/` directory
-
-## 📄 License
-
-This project is for educational and demonstration purposes. The QuickDraw dataset is provided by Google under their terms of service.
 
 ## 🤝 Contributing
 
