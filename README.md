@@ -24,7 +24,7 @@ QuickDrawGame/
 - **Modern UI**: Beautiful styling with smooth animations
 - **Confidence Calibration**: Enhanced model training with calibrated confidence scores
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Install Dependencies
 ```bash
